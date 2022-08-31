@@ -87,6 +87,8 @@ for time in range(times):
         para[0,epoch] += arg4 # after normalize the data 
         para[1,epoch] += arg6*std_val # true alpha value
     param_gen = []
+    param_norm = []
+    param_lap = []
 distance_mean = distance/times
 para_mean = para/times
 
