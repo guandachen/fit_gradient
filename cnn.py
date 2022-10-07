@@ -11,12 +11,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 'variables'
-epochs = 500
+epochs = 1000
 samples = 100   # like one picture of the minst dataset
 features = 100  # like the pixel number in one picture
 # node1_A = 10000
 node2 = 100
-times = 10     # for each cases 
+times = 1     # for each cases 
 learning_rate=0.01
 name = "weight"
 
@@ -25,40 +25,48 @@ sample_index_nodeB = np.random.choice(np.arange(200*25), size=int(200*25*0.1))
 class Network_A(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.conv_B = tf.keras.layers.Conv2D(
-            filters=400,
+        self.model = tf.keras.models.Sequential([
+        tf.keras.layers.Conv2D(
+            filters=10,
+            kernel_size=[3,3],
+            padding ='valid',
+            activation=None,
+            use_bias=False,
+            input_shape=[10,10,1]),
+        tf.keras.layers.Conv2D(
+            filters=10,
             kernel_size=[5,5],
             padding ='valid',
             activation=None,
-            use_bias=False)
-        self.dense2 = tf.keras.layers.Dense(units = node2,
-                           kernel_initializer=tf.keras.initializers.RandomNormal(mean=0, stddev=1,seed=0),
-                           use_bias=False,
-                           )
+            use_bias=False),
+        tf.keras.layers.Flatten(),
+        ])
     def call(self, input):
-        x = self.conv_B(input)
-        # x = self.pool_B(x)
-        output = self.dense2(x)
+        output = self.model(input)
         return output 
 
 class CNN_B(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        self.conv_B = tf.keras.layers.Conv2D(
-            filters=200,
+        self.model = tf.keras.models.Sequential([
+        tf.keras.layers.Conv2D(
+            filters=20,
+            kernel_size=[3,3],
+            padding ='valid',
+            activation=None,
+            use_bias=False,
+            input_shape=[10,10,1]),
+        tf.keras.layers.Conv2D(
+            filters=10,
             kernel_size=[5,5],
             padding ='valid',
             activation=None,
-            use_bias=False)
-        # self.pool_B = tf.keras.layers.MaxPool2D(pool_size=[2,2],strides=2)
-        self.dense2 = tf.keras.layers.Dense(units = node2,
-                           kernel_initializer=tf.keras.initializers.RandomNormal(mean=0, stddev=1),
-                           use_bias=False,
-                           )
+            use_bias=False),
+        tf.keras.layers.Flatten(),
+        ])
+        
     def call(self, input):
-        x = self.conv_B(input)
-        # x = self.pool_B(x)
-        output = self.dense2(x)
+        output = self.model(input)
         return output 
     
 # change tf to numpy    
@@ -89,15 +97,17 @@ for time in range(times):
             print("epoch %d: loss %f" % (epoch+1, loss.numpy()))
         grads_cnn = tape.gradient(loss, model.variables)
         optimizer.apply_gradients(grads_and_vars=zip(grads_cnn, model.variables))
-        # new_cnn = change_type(grads_cnn) # tf to numpy
+        
         weights = model.get_weights() # the weight of the model 
         layer1 = weights[1].flatten()
         sample_layer1 = layer1[sample_index_nodeB]
-        # np.set_printoptions(threshold=np.inf)
+        
+        
         with open('sim_'+str(time)+'_sample_weight.pickle', 'wb') as file:
             pickle.dump(sample_layer1, file)
-print(A.summary())
-print(model.summary())
+            
+print(A.model.summary())
+print(model.model.summary())
 plt.figure()
 plt.plot(losses,color='red', label='size of 5000 ')
 plt.xlabel('training epochs')
