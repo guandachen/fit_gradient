@@ -127,6 +127,7 @@ train_loss = np.zeros(epochs)
 test_loss = np.zeros(epochs)
 
 elapsed = time.time()
+np.random.seed(0)
 for epoch in range(epochs):
     epoch_time = time.time()
     a0 = np.zeros(batch_total)
