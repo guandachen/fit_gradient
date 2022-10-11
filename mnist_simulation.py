@@ -77,12 +77,11 @@ def step(x, y):
 """
 ## Prepare the data
 """
-model_name = 'MLP'
-learning_rate = 0.01
+model_name = 'ConvNet'
+learning_rate = 0.001
 momentum = 0.9
 batch_size = 128
 epochs = 15
-
 assert model_name in list(architecture.keys()), 'Error! Model does not exist!'
 
 # Model / data parameters
