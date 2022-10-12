@@ -80,12 +80,12 @@ def step(x, y):
 """
 ## Prepare the data
 """
-model_name = 'MLP'
-learning_rate = 0.001
+model_name = 'ConvNet'
+learning_rate = 0.01
 momentum = 0
 batch_size = 128
-epochs = 5
-keras_fit = False
+epochs = 15
+keras_fit = True
 assert model_name in list(architecture.keys()), 'Error! Model does not exist!'
 
 # Model / data parameters
@@ -165,7 +165,7 @@ else:
         test_loss[epoch] = t_loss
         epoch_time = time.time() - epoch_time
         
-        values=[('accuracy', a0.mean()), ('val_acc', l0.mean()), ('epoch time (s)', epoch_time)]
+        values=[('accuracy', a0.mean()), ('val_acc', t_acc), ('epoch time (s)', epoch_time)]
         pb_i.update(batch_total + 1, values=values, finalize=True)
         
 """
