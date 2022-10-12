@@ -12,11 +12,11 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
+from tensorflow.keras.utils import Progbar
 
 def Dense(input_shape, num_classes):
     'Single Layer Dense'
+    tf.random.set_seed(time.time())
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -27,6 +27,7 @@ def Dense(input_shape, num_classes):
 
 def MLP(input_shape, num_classes):
     'Multi Layer Dense'
+    tf.random.set_seed(time.time())
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -39,6 +40,7 @@ def MLP(input_shape, num_classes):
 
 def ConvNet(input_shape, num_classes):
     'Convolution + Dense Layers'
+    tf.random.set_seed(time.time())
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -67,21 +69,23 @@ def step(x, y):
         cross_acc = keras.metrics.CategoricalAccuracy()
         cross_acc.update_state(y,logits)
         # Compute the loss and the initial gradient
-    grads = tape.gradient(loss, model.trainable_variables)
-    opt.apply_gradients(zip(grads, model.trainable_variables))
+        grads = tape.gradient(loss, model.trainable_variables)
+    model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
     for idx in range(len(grads)):
         grads[idx] = grads[idx].numpy().flatten()
     return np.array(grads,dtype=object), loss.numpy().mean(), cross_acc.result().numpy()
 
+
 """
 ## Prepare the data
 """
-model_name = 'ConvNet'
+model_name = 'MLP'
 learning_rate = 0.001
-momentum = 0.9
+momentum = 0
 batch_size = 128
-epochs = 15
+epochs = 5
+keras_fit = False
 assert model_name in list(architecture.keys()), 'Error! Model does not exist!'
 
 # Model / data parameters
@@ -118,35 +122,56 @@ model.summary()
 opt = keras.optimizers.SGD(learning_rate=learning_rate, momentum=momentum)
 model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
 
-total_size = len(x_train)
-batch_total = math.ceil(total_size/batch_size)
-train_acc = np.zeros(epochs)
-test_acc = np.zeros(epochs)
-train_loss = np.zeros(epochs)
-test_loss = np.zeros(epochs)
-
-elapsed = time.time()
-np.random.seed(0)
-for epoch in range(epochs):
-    epoch_time = time.time()
-    a0 = np.zeros(batch_total)
-    l0 = np.zeros(batch_total)
+if keras_fit:
+    tf.random.set_seed(0)
+    model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
+else:
+    total_size = len(x_train)
+    batch_total = math.ceil(total_size/batch_size)
+    train_acc = np.zeros(epochs)
+    test_acc = np.zeros(epochs)
+    train_loss = np.zeros(epochs)
+    test_loss = np.zeros(epochs)
     
-    'Randomizing the input index'
-    ind_perm = np.random.permutation(total_size)
-    ind_perm = ind_perm[:-(total_size%batch_size)].reshape(-1, batch_size).tolist() + [ind_perm[-(total_size%batch_size):].tolist()]
-    for batches, idx in enumerate(ind_perm):
-        grads, l1, a1 = step(x_train[idx], y_train[idx])
+    elapsed = time.time()
+    np.random.seed(0)
 
-        a0[batches] = a1
-        l0[batches] = l1
+    for epoch in range(epochs):
+        epoch_time = time.time()
+        a0 = np.zeros(batch_total)
+        l0 = np.zeros(batch_total)
+        
+        pb_i = Progbar(batch_total + 1, stateful_metrics=['loss', 'accuracy'])
+        
+        'Randomizing the input index'
+        ind_perm = np.random.permutation(total_size)
+        ind_perm = ind_perm[:-(total_size%batch_size)].reshape(-1, batch_size).tolist() + [ind_perm[-(total_size%batch_size):].tolist()]
+        
+        print('Epoch ' + str(epoch+1) + '/' + str(epochs))
+        for batches, idx in enumerate(ind_perm):
+            grads, l1, a1 = step(x_train[idx], y_train[idx])
+    
+            a0[batches] = a1
+            l0[batches] = l1
+            
+            values=[('loss', l1), ('accuracy', a1)]
+            pb_i.add(1, values=values)
+    
+        t_loss, t_acc = model.evaluate(x_test, y_test, batch_size=batch_size, verbose=0)
+        
+        train_acc[epoch] = a0.mean()
+        test_acc[epoch] = t_acc
+        train_loss[epoch] = l0.mean()
+        test_loss[epoch] = t_loss
+        epoch_time = time.time() - epoch_time
+        
+        values=[('accuracy', a0.mean()), ('val_acc', l0.mean()), ('epoch time (s)', epoch_time)]
+        pb_i.update(batch_total + 1, values=values, finalize=True)
+        
+"""
+## Evaluate the trained model
+"""
 
-    t_loss, t_acc = model.evaluate(x_test, y_test, batch_size=batch_size, verbose=0)
-    
-    train_acc[epoch] = a0.mean()
-    test_acc[epoch] = t_acc
-    train_loss[epoch] = l0.mean()
-    test_loss[epoch] = t_loss
-    epoch_time = time.time() - epoch_time
-    
-    print("Epoch: " + str(epoch + 1) + '/' + str(epochs) + ", Acc:" + str(f'{np.mean(a0): 0.4f}') + ", Val Acc:" + str(f'{t_acc: 0.4f}') + ", Time: %ds" % (epoch_time))
+score = model.evaluate(x_test, y_test, verbose=0)
+print("Test loss:", score[0])
+print("Test accuracy:", score[1])
