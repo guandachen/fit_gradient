@@ -4,7 +4,6 @@
 ## Setup
 """
 import time
-import sys
 
 import math
 import numpy as np
@@ -16,7 +15,7 @@ from tensorflow.keras.utils import Progbar
 
 def Dense(input_shape, num_classes):
     'Single Layer Dense'
-    tf.random.set_seed(time.time())
+    tf.keras.utils.set_random_seed(int(time.time()))
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -27,7 +26,7 @@ def Dense(input_shape, num_classes):
 
 def MLP(input_shape, num_classes):
     'Multi Layer Dense'
-    tf.random.set_seed(time.time())
+    tf.keras.utils.set_random_seed(int(time.time()))
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -40,7 +39,7 @@ def MLP(input_shape, num_classes):
 
 def ConvNet(input_shape, num_classes):
     'Convolution + Dense Layers'
-    tf.random.set_seed(time.time())
+    tf.keras.utils.set_random_seed(int(time.time()))
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -59,33 +58,34 @@ architecture = {'Dense': Dense,
                 'ConvNet': ConvNet}
 
 def step(x, y):
-    # global opt, model
     # keep track of our gradients
     with tf.GradientTape() as tape:
         # make a prediction using the model and then calculate the
         # loss
         logits = model(x, training=True)
-        loss = keras.losses.categorical_crossentropy(y,logits)
-        cross_acc = keras.metrics.CategoricalAccuracy()
-        cross_acc.update_state(y,logits)
-        # Compute the loss and the initial gradient
-        grads = tape.gradient(loss, model.trainable_variables)
+        # loss = keras.losses.categorical_crossentropy(y,logits)
+        loss = model.loss(y, logits)
+
+    cross_acc = keras.metrics.CategoricalAccuracy()
+    cross_acc.update_state(y,logits)
+    
+    # Compute the loss and the initial gradient
+    grads = tape.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
     for idx in range(len(grads)):
         grads[idx] = grads[idx].numpy().flatten()
     return np.array(grads,dtype=object), loss.numpy().mean(), cross_acc.result().numpy()
 
-
 """
 ## Prepare the data
 """
-model_name = 'ConvNet'
-learning_rate = 0.01
+model_name = 'MLP'
+learning_rate = 0.001
 momentum = 0
 batch_size = 128
 epochs = 15
-keras_fit = True
+keras_fit = False
 assert model_name in list(architecture.keys()), 'Error! Model does not exist!'
 
 # Model / data parameters
@@ -120,12 +120,13 @@ model.summary()
 """
 
 opt = keras.optimizers.SGD(learning_rate=learning_rate, momentum=momentum)
-model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
+model.compile(loss=keras.losses.categorical_crossentropy, optimizer=opt, metrics=["accuracy"])
 
 if keras_fit:
-    tf.random.set_seed(0)
+    tf.keras.utils.set_random_seed(0)
     model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
 else:
+    
     total_size = len(x_train)
     batch_total = math.ceil(total_size/batch_size)
     train_acc = np.zeros(epochs)
@@ -134,7 +135,8 @@ else:
     test_loss = np.zeros(epochs)
     
     elapsed = time.time()
-    np.random.seed(0)
+    tf.keras.utils.set_random_seed(0)
+    model.metrics_names
 
     for epoch in range(epochs):
         epoch_time = time.time()
@@ -156,6 +158,7 @@ else:
             
             values=[('loss', l1), ('accuracy', a1)]
             pb_i.add(1, values=values)
+            
     
         t_loss, t_acc = model.evaluate(x_test, y_test, batch_size=batch_size, verbose=0)
         
