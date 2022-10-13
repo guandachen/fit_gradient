@@ -13,8 +13,8 @@ import seaborn as sn
 from numpy import linalg as LA
 # times = 1      # for each cases 
 # path = 'D:\simulation data\\'
-path = 'C:\\Users\\USER\\Desktop\\Python project\\Python project\\different hidden layer\\cnn case\\'
-# path = 'D:\MNIST Train\Dense'
+# path = 'C:\\Users\\USER\\Desktop\\Python project\\Python project\\different hidden layer\\cnn case\\'
+path = 'D:\MNIST Train\Dense'
 # node1_B = [11000, 13000, 15000, 17000, 19000] # overparameter
 # node1_B = [5000, 7000, 9000]         # underparameter
 node1_B = 5000
@@ -26,12 +26,12 @@ model_name = 'Dense'
 sample_Data = np.zeros((times,int(5*5*20*10)))                # For CNN with Teacher and Student Network
 # sample_Data = np.zeros((times,int(3*3*32*64*0.1)))         # For ConvNet with MNIST dataset
 # sample_Data = np.zeros((times,int(512*512*0.1)))           # For MLP with MNIST dataset
-# sample_Data = np.zeros((times,int(784*10*0.1)))              # For Dense with MNIST dataset
+sample_Data = np.zeros((times,int(784*10*0.1)))              # For Dense with MNIST dataset
 save_Data = np.zeros((times,times))
 for time in range(times):
     # with open(path+str(node1_B)+'//'+'sim_'+str(time)+'sample_weight.pickle', 'rb') as f:
-    with open (path+'sim_'+str(time)+'_sample_weight.pickle','rb') as f:
-    # with open (path+'\\'+str(model_name)+str(time)+'weight.pickle','rb') as f:    
+    # with open (path+'sim_'+str(time)+'_sample_weight.pickle','rb') as f:
+    with open (path+'\\'+str(model_name)+str(time)+'weight.pickle','rb') as f:    
         sample_Data[time,:] = pickle.load(f)
 
 for time in range(times):
@@ -44,7 +44,7 @@ for time in range(times):
 # for i in range(times):
 #     save_Data[i,i] = 0 
 denom = np.ones_like(save_Data)
-norm = np.linalg(save_Data)/denom
+norm = np.linalg.norm(save_Data)/np.linalg.norm(denom)
 
 sn.heatmap(save_Data, annot=True, fmt='g',cmap='YlGnBu_r')
 plt.title('size of different times simulation cosine similarity' + '\nFrobenius norm of ' + str(norm))
