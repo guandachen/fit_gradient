@@ -43,6 +43,9 @@ for time in range(times):
     
 # for i in range(times):
 #     save_Data[i,i] = 0 
+denom = np.ones_like(save_Data)
+norm = np.linalg(save_Data)/denom
+
 sn.heatmap(save_Data, annot=True, fmt='g',cmap='YlGnBu_r')
-plt.title('size of different times simulation cosine similarity')
+plt.title('size of different times simulation cosine similarity' + '\nFrobenius norm of ' + str(norm))
 plt.show()
