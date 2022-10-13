@@ -11,18 +11,18 @@ import pickle
 import os
 #---------------------
 'variables'
-epochs = 500
+epochs = 1000
 samples = 100   # like one picture of the minst dataset
 features = 100  # like the []
 node1_all = [10000, 5000, 1000, 500, 100]
+# node1_all = [100]
 node2 = 100
 # node1_B = [11000, 13000, 15000, 17000, 19000] # overparameter
 # node1_B = [5000, 7000, 9000, 10000, 11000]         # underparameter
 # cases = 5
-times = 15      # for each cases 
-learning_rate=0.001
-name = "weight"
-path = 'C:\\Users\\USER\\Desktop\\Python project\\Python project\\different hidden layer\\'
+times = 1      # for each cases 
+learning_rate=[0.001, 0.001, 0.001, 0.01, 0.01]
+path = 'D:\\student_teacher_save_weight\\'
 #-------------------------------------------------------------------------------
 # construct network A for generating data (fixed weight:seed 100)
 class Network_A(tf.keras.Model):
@@ -69,22 +69,21 @@ def change_type(grads):
 # losses = np.zeros((times,epochs,cases))
 losses = np.zeros((times,epochs))
 # case = 0
-for nodes in node1_all:
+for nodes, lr in zip(node1_all, learning_rate):
     sample_index_nodeB = np.random.choice(np.arange(features*nodes), size=int(features*nodes*0.1))
-    # isExists = os.path.exists(path+str(nodes))
-    # if not isExists:
-    #     os.makedirs(path+str(nodes))
-    #     print("file with "+str(nodes)+'create successful')
-    #     pass
-    # else:
-    #     print("file with "+str(nodes)+'create successful')
-    #     pass
+    isExists = os.path.exists(path+str(nodes))
+    if not isExists:
+        os.makedirs(path+str(nodes))
+        print("file with "+str(nodes)+'create successful')
+        pass
+    else:
+        print("file with "+str(nodes)+'create successful')
+        pass
     for time in range(times):
         model = Network_B(nodes)
-        optimizer = tf.keras.optimizers.SGD(learning_rate)
+        optimizer = tf.keras.optimizers.SGD(lr)
         A = Network_A(nodes)
         loss_fn = tf.keras.losses.MeanSquaredError()
-        empty = [] # prepare for sotting gradient
         
         np.random.seed(0) #fit the input data state
     #-----------------------------------------------------------------#
@@ -101,21 +100,16 @@ for nodes in node1_all:
                 print("epoch %d: loss %f" % (epoch+1, loss.numpy()))
             grads = tape.gradient(loss, model.variables)
             optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
-            new = change_type(grads) # tf to numpy
-            # d = new.flatten()
-            empty.append(new[1]) # only sort for the hidden layer
+        weights = model.get_weights() # the weight of the model  
+        layer1 = weights[0].flatten()
+        sample_layer1 = layer1[sample_index_nodeB]
+        with open(path+str(nodes)+'\\'+'sim_'+str(time)+'sample_weight.pickle', 'wb') as file:
+            pickle.dump(sample_layer1, file)
         print(str(time) + ' simulations done')
-        ## sort the 'gradient' data which is in the hidden layer 
-        # with open('gradient_'+str(nodes)+'nodes'+str(time)+'.pickle', 'wb') as f:
-        #     pickle.dump(empty, f)
-        ## sort the 'weight' of the model  which is in the hidden layer 
-        # weights = model.get_weights() # the weight of the model 
-        # layer1 = weights[1].flatten()
-        # sample_layer1 = layer1[sample_index_nodeB]
-        # np.set_printoptions(threshold=np.inf)
-        # with open(path+str(nodes)+'//'+'sim_'+str(time)+'sample_weight.pickle', 'wb') as file:
-        #     pickle.dump(sample_layer1, file)
-    # case+=1
+
+        
+
+    
 # losses = losses.mean(axis=0)
 # plt.figure()
 # plt.plot(losses,color='red', label='size of 7000')
