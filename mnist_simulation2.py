@@ -8,13 +8,14 @@ import sys
 import pickle
 import math
 import numpy as np
+import heapq
 
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.utils import Progbar
+from numpy.linalg import matrix_rank
 
-path = 'D:\\MNIST Train\\Dense'
 
 def Dense(input_shape, num_classes):
     'Single Layer Dense'
@@ -64,12 +65,12 @@ def step(x, y):
     # global opt, model
     # keep track of our gradients
     with tf.GradientTape() as tape:
-        # make a prediction using the model and then calculate the
-        # loss
+        # make a prediction using the model and then calculate the loss
         logits = model(x, training=True)
         loss = keras.losses.categorical_crossentropy(y,logits)
         cross_acc = keras.metrics.CategoricalAccuracy()
         cross_acc.update_state(y,logits)
+        
         # Compute the loss and the initial gradient
         grads = tape.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -90,7 +91,8 @@ epochs = 15
 keras_fit = True
 times = 10
 assert model_name in list(architecture.keys()), 'Error! Model does not exist!'
-
+# path = 'D:\\MNIST Train\\Dense'
+path = 'D:\\MNIST Train\\'+str(model_name)
 # Model / data parameters
 num_classes = 10
 input_shape = (28, 28, 1)
@@ -123,7 +125,7 @@ model.summary()
 """
 # sample_index_nodeB = np.random.choice(np.arange(3*3*32*64), size=int(3*3*32*64*0.1)) #For ConvNet
 # sample_index_nodeB = np.random.choice(np.arange(512*512), size=int(512*512*0.1)) #For ConvNet
-sample_index_nodeB = np.random.choice(np.arange(784*10), size=int(784*10*0.1)) #For Dense       
+# sample_index_nodeB = np.random.choice(np.arange(784*10), size=int(784*10*0.1)) #For Dense       
 for time in range(times):
     opt = keras.optimizers.SGD(learning_rate=learning_rate, momentum=momentum)
     model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
@@ -185,8 +187,17 @@ for time in range(times):
     ## sort the weight of the the model 
     
     weights = model.get_weights() # the weight of the model 
-    # layer1 = weights[2].flatten() # for ConvNet & MLP
+# for layer in range(len(weights)):
+#     print(matrix_rank(weights[layer]))
+    # # layer1 = weights[2].flatten() # for ConvNet & MLP
     layer1 = weights[0].flatten()   # for Desne
-    sample_layer1 = layer1[sample_index_nodeB]
+    layer1_k = np.abs(layer1)
+    # # sample_layer1 = layer1
+    top_k=784*512*0.1
+    # if time == 0:
+    bigval_index = layer1_k.argsort()[::-1][0:int(top_k)]
+    sample_layer1 = layer1[bigval_index]
+    
     with open(path+'\\'+str(model_name)+str(time)+'weight.pickle', 'wb') as file:
         pickle.dump(sample_layer1, file)
+    

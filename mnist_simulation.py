@@ -4,18 +4,22 @@
 ## Setup
 """
 import time
-
+import sys
+import pickle
 import math
 import numpy as np
+
 
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.utils import Progbar
 
+path = 'D:\\MNIST Train\\MLP'
+
 def Dense(input_shape, num_classes):
     'Single Layer Dense'
-    tf.keras.utils.set_random_seed(int(time.time()))
+    tf.random.set_seed(time.time())
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -26,7 +30,7 @@ def Dense(input_shape, num_classes):
 
 def MLP(input_shape, num_classes):
     'Multi Layer Dense'
-    tf.keras.utils.set_random_seed(int(time.time()))
+    tf.random.set_seed(time.time())
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -39,7 +43,7 @@ def MLP(input_shape, num_classes):
 
 def ConvNet(input_shape, num_classes):
     'Convolution + Dense Layers'
-    tf.keras.utils.set_random_seed(int(time.time()))
+    tf.random.set_seed(time.time())
     return keras.Sequential(
         [
             keras.Input(shape=input_shape),
@@ -58,34 +62,34 @@ architecture = {'Dense': Dense,
                 'ConvNet': ConvNet}
 
 def step(x, y):
+    # global opt, model
     # keep track of our gradients
     with tf.GradientTape() as tape:
         # make a prediction using the model and then calculate the
         # loss
         logits = model(x, training=True)
-        # loss = keras.losses.categorical_crossentropy(y,logits)
-        loss = model.loss(y, logits)
-
-    cross_acc = keras.metrics.CategoricalAccuracy()
-    cross_acc.update_state(y,logits)
-    
-    # Compute the loss and the initial gradient
-    grads = tape.gradient(loss, model.trainable_variables)
+        loss = keras.losses.categorical_crossentropy(y,logits)
+        cross_acc = keras.metrics.CategoricalAccuracy()
+        cross_acc.update_state(y,logits)
+        # Compute the loss and the initial gradient
+        grads = tape.gradient(loss, model.trainable_variables)
     model.optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
     for idx in range(len(grads)):
         grads[idx] = grads[idx].numpy().flatten()
     return np.array(grads,dtype=object), loss.numpy().mean(), cross_acc.result().numpy()
 
+
 """
 ## Prepare the data
 """
 model_name = 'MLP'
-learning_rate = 0.001
+learning_rate = 0.01
 momentum = 0
 batch_size = 128
 epochs = 15
-keras_fit = False
+keras_fit = True
+times = 10
 assert model_name in list(architecture.keys()), 'Error! Model does not exist!'
 
 # Model / data parameters
@@ -118,63 +122,78 @@ model.summary()
 """
 ## Train the model
 """
-
-opt = keras.optimizers.SGD(learning_rate=learning_rate, momentum=momentum)
-model.compile(loss=keras.losses.categorical_crossentropy, optimizer=opt, metrics=["accuracy"])
-
-if keras_fit:
-    tf.keras.utils.set_random_seed(0)
-    model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
-else:
+# sample_index_nodeB = np.random.choice(np.arange(3*3*32*64), size=int(3*3*32*64*0.1)) #For ConvNet
+# sample_index_nodeB = np.random.choice(np.arange(512*512), size=int(512*512*0.1)) #For ConvNet
+# sample_index_nodeB = np.random.choice(np.arange(784*10), size=int(784*10*0.1)) #For Dense       
+for time in range(times):
+    opt = keras.optimizers.SGD(learning_rate=learning_rate, momentum=momentum)
+    model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
     
-    total_size = len(x_train)
-    batch_total = math.ceil(total_size/batch_size)
-    train_acc = np.zeros(epochs)
-    test_acc = np.zeros(epochs)
-    train_loss = np.zeros(epochs)
-    test_loss = np.zeros(epochs)
+    if keras_fit:
+        tf.random.set_seed(0)
+        model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
+    else:
+        total_size = len(x_train)
+        batch_total = math.ceil(total_size/batch_size)
+        train_acc = np.zeros(epochs)
+        test_acc = np.zeros(epochs)
+        train_loss = np.zeros(epochs)
+        test_loss = np.zeros(epochs)
+        
+        elapsed = time.time()
+        np.random.seed(0)
     
-    elapsed = time.time()
-    tf.keras.utils.set_random_seed(0)
-    model.metrics_names
-
-    for epoch in range(epochs):
-        epoch_time = time.time()
-        a0 = np.zeros(batch_total)
-        l0 = np.zeros(batch_total)
-        
-        pb_i = Progbar(batch_total + 1, stateful_metrics=['loss', 'accuracy'])
-        
-        'Randomizing the input index'
-        ind_perm = np.random.permutation(total_size)
-        ind_perm = ind_perm[:-(total_size%batch_size)].reshape(-1, batch_size).tolist() + [ind_perm[-(total_size%batch_size):].tolist()]
-        
-        print('Epoch ' + str(epoch+1) + '/' + str(epochs))
-        for batches, idx in enumerate(ind_perm):
-            grads, l1, a1 = step(x_train[idx], y_train[idx])
-    
-            a0[batches] = a1
-            l0[batches] = l1
+        for epoch in range(epochs):
+            epoch_time = time.time()
+            a0 = np.zeros(batch_total)
+            l0 = np.zeros(batch_total)
             
-            values=[('loss', l1), ('accuracy', a1)]
-            pb_i.add(1, values=values)
+            pb_i = Progbar(batch_total + 1, stateful_metrics=['loss', 'accuracy'])
             
+            'Randomizing the input index'
+            ind_perm = np.random.permutation(total_size)
+            ind_perm = ind_perm[:-(total_size%batch_size)].reshape(-1, batch_size).tolist() + [ind_perm[-(total_size%batch_size):].tolist()]
+            
+            print('Epoch ' + str(epoch+1) + '/' + str(epochs))
+            for batches, idx in enumerate(ind_perm):
+                grads, l1, a1 = step(x_train[idx], y_train[idx])
+        
+                a0[batches] = a1
+                l0[batches] = l1
+                
+                values=[('loss', l1), ('accuracy', a1)]
+                pb_i.add(1, values=values)
+        
+            t_loss, t_acc = model.evaluate(x_test, y_test, batch_size=batch_size, verbose=0)
+            
+            train_acc[epoch] = a0.mean()
+            test_acc[epoch] = t_acc
+            train_loss[epoch] = l0.mean()
+            test_loss[epoch] = t_loss
+            epoch_time = time.time() - epoch_time
+            
+            values=[('accuracy', a0.mean()), ('val_acc', t_acc), ('epoch time (s)', epoch_time)]
+            pb_i.update(batch_total + 1, values=values, finalize=True)
+            
+    """
+    ## Evaluate the trained model
+    """
     
-        t_loss, t_acc = model.evaluate(x_test, y_test, batch_size=batch_size, verbose=0)
-        
-        train_acc[epoch] = a0.mean()
-        test_acc[epoch] = t_acc
-        train_loss[epoch] = l0.mean()
-        test_loss[epoch] = t_loss
-        epoch_time = time.time() - epoch_time
-        
-        values=[('accuracy', a0.mean()), ('val_acc', t_acc), ('epoch time (s)', epoch_time)]
-        pb_i.update(batch_total + 1, values=values, finalize=True)
-        
-"""
-## Evaluate the trained model
-"""
-
-score = model.evaluate(x_test, y_test, verbose=0)
-print("Test loss:", score[0])
-print("Test accuracy:", score[1])
+    score = model.evaluate(x_test, y_test, verbose=0)
+    print("Test loss:", score[0])
+    print("Test accuracy:", score[1])
+    
+    ## sort the weight of the the model 
+    weights = model.get_weights() # the weight of the model 
+    # layer1 = weights[2].flatten() # for ConvNet & MLP
+    layer1 = weights[0].flatten()   # for Desne
+    layer1_k = np.abs(layer1)
+    # # sample_layer1 = layer1
+    top_k=784*512*0.1
+    # make sure that the loaction should be always the samex`
+    if time == 0:
+        bigval_index = layer1_k.argsort()[::-1][0:int(top_k)]
+    sample_layer1 = layer1[bigval_index]
+    
+    with open(path+'\\'+str(model_name)+str(time)+'weight.pickle', 'wb') as file:
+        pickle.dump(sample_layer1, file)
