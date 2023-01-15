@@ -22,7 +22,13 @@ from keras.models import load_model
 node1 = 5
 samples = 100
 features = 50
-
+def elem(size,i,j):
+    matrix = np.eye(size)
+    matrix[i][i] = 0
+    matrix[j][j] = 0
+    matrix[i][j] = 1
+    matrix[j][i] = 1
+    return matrix
 class Student(tf.keras.Model):
     def __init__(self, node1):
         super().__init__()
@@ -46,8 +52,27 @@ model = Student(node1)
 model.build(input_shape=(samples, features))
 model.load_weights('Student_weights.h5', by_name = True)
 y = model(x)
+print('without permutation output:', y[0])
+rest = model.get_weights()
+rest = np.asarray(rest)
+print('neuron 2 :',rest[0][0][2])
+print('neuron 3:',rest[0][0][3])
 
-model_P = Student(node1)
-model_P.build(input_shape=(samples, features))
-model_P.load_weights('Student_weights.h5', by_name = True)
+rest[0] = np.matmul(rest[0],elem(5,2,3))
+rest[1] = np.matmul(np.linalg.inv(elem(5,2,3)),rest[1])
+print('----after permutation----')
+print('neuron 2:',rest[0][0][2])
+print('neuron 3:',rest[0][0][3])
+
+# rest = rest.tolist()
+# k = model.layers[0].get_weights()
+# k = rest[0]
+model.layers[0] = rest[0]
+model.layers[1] = rest[1]
+# model.layers[0].set_weights(rest[0])
+# model.layers[1].set_weights(rest[1])
+# model_P = Student(node1)
+# model_P.build(input_shape=(samples, features))
+# model_P.load_weights('Student_weights.h5', by_name = True)
 y_p = model(x)
+print('permutation output:', y_p[0])
